@@ -1,0 +1,486 @@
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-noshorthands,es-tabla]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+% ---------------------------------------------------------------------------
+% Enlace al repositorio: reemplazar USUARIO por el usuario de GitHub
+\newcommand{\repo}{https://github.com/USUARIO/misioneros-canibales-busqueda}
+% ---------------------------------------------------------------------------
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codekw}{RGB}{0,70,140}
+\definecolor{codecm}{RGB}{110,110,110}
+\definecolor{solucion}{RGB}{200,40,40}
+\lstset{
+  language=Python, basicstyle=\ttfamily\scriptsize, keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm}\itshape, stringstyle=\color{teal}, backgroundcolor=\color{codebg},
+  frame=single, rulecolor=\color{black!20}, numbers=left, numberstyle=\tiny\color{codecm},
+  xleftmargin=2em, framexleftmargin=1.5em, showstringspaces=false, columns=fullflexible,
+  breaklines=true, captionpos=b,
+  literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1
+           {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+}
+\renewcommand{\lstlistingname}{Listado}
+\AtBeginDocument{\renewcommand{\thelstlisting}{\arabic{lstlisting}}}
+
+\newcommand{\Sr}{S_{r}}
+\newcommand{\st}[3]{(#1,#2,#3)}
+
+\begin{document}
+
+\title{Formulación y Búsqueda Ciega en Espacios de Estados:\\
+El Problema de los Misioneros y Caníbales}
+\titlerunning{Búsqueda ciega en Misioneros y Caníbales}
+
+\author{Christopher Pulupa}
+\authorrunning{C. Pulupa}
+\institute{Facultad de Ingeniería de Sistemas, Escuela Politécnica Nacional,\\
+Quito, Ecuador\\
+\email{cmateoph05@gmail.com}\\
+Tarea Individual DG\_S4 --- Inteligencia Artificial}
+
+\maketitle
+
+\begin{abstract}
+Se formaliza el problema de los misioneros y caníbales como un problema de
+búsqueda en espacio de estados $(S, s_0, A, T, G)$ y se implementan en Python
+las búsquedas no informadas en anchura (BFS, frontera FIFO) y en profundidad
+(DFS, frontera LIFO), junto con A$^*$ como referencia informada. En la instancia
+clásica ($N=3$, bote de capacidad $K=2$) ambos algoritmos ciegos encuentran un
+camino de 11 cruces expandiendo 14 (BFS) y 11 (DFS) nodos en unas decenas de
+microsegundos. El análisis empírico muestra que este resultado no contradice la
+teoría sino que la confirma: la restricción de seguridad reduce el espacio a
+16 estados alcanzables con un factor de ramificación efectivo
+$b^*\approx 1{,}04$, y en ese grafo todos los caminos simples a la meta miden
+exactamente 11. Al generalizar a $N$ y $K$ mayores, DFS deja de ser óptimo
+(llega a duplicar la longitud óptima) y, al retirar la detección de estados
+repetidos, la frontera de BFS crece a 13\,835 nodos frente a 5 de DFS,
+reproduciendo la brecha $O(b^d)$ frente a $O(bm)$.
+\keywords{Búsqueda no informada \and BFS \and DFS \and Espacio de estados \and
+Factor de ramificación efectivo \and Misioneros y caníbales.}
+\end{abstract}
+
+% ===========================================================================
+\section{Introducción}
+
+El problema de los misioneros y caníbales es uno de los ejemplos canónicos de la
+Inteligencia Artificial para estudiar la \emph{formulación} de problemas: Amarel
+\cite{amarel1968} lo usó para mostrar que la elección de la representación
+determina la dificultad de la búsqueda. Tres misioneros y tres caníbales deben
+cruzar un río en un bote de dos plazas sin que, en ninguna orilla, los caníbales
+superen en número a los misioneros presentes.
+
+Siguiendo el marco de agentes de resolución de problemas de Russell y Norvig
+\cite{russell2020}, el agente (i) formula el objetivo y el problema, (ii) busca
+una secuencia de acciones en el modelo y (iii) la ejecuta. Este trabajo cubre las
+dos primeras fases: la Sección~\ref{sec:formulacion} define el problema con
+rigor matemático, la Sección~\ref{sec:implementacion} describe su abstracción a
+código, la Sección~\ref{sec:experimentos} presenta el \emph{benchmarking} y la
+Sección~\ref{sec:discusion} contrasta los resultados con la teoría asintótica.
+
+% ===========================================================================
+\section{Formulación teórica}\label{sec:formulacion}
+
+Se trabaja con la generalización de $N$ misioneros, $N$ caníbales y un bote de
+capacidad $K$; la instancia pedida es $N=3$, $K=2$. Un problema de búsqueda es la
+tupla $\mathcal{P} = (S, s_0, A, \textsc{Aplicable}, T, G, c)$.
+
+\subsubsection{Estados.}
+Basta con describir la orilla izquierda, porque la derecha se deduce por
+complemento. Un estado es la tupla
+\begin{equation}
+  s = (m, c, b), \qquad m, c \in \{0,\dots,N\},\; b\in\{0,1\},
+\end{equation}
+donde $m$ y $c$ son los misioneros y caníbales en la orilla izquierda y $b=1$
+si el bote está en ella. Las cantidades en la orilla derecha son
+$\bar m = N-m$ y $\bar c = N-c$. El conjunto de estados \emph{válidos} es
+\begin{equation}
+  S = \bigl\{ (m,c,b) \;:\; (m = 0 \lor m \ge c) \;\land\; (\bar m = 0 \lor \bar m \ge \bar c) \bigr\}.
+  \label{eq:seguridad}
+\end{equation}
+Los pares $(m,c)$ que cumplen \eqref{eq:seguridad} son los de $m=0$, los de
+$m=N$ y los de la diagonal $m=c$, es decir $3N+1$ pares; por tanto
+$|S| = 2(3N+1)$, que para $N=3$ da $|S|=20$ frente a las $4\cdot 4\cdot 2=32$
+combinaciones sin restricción. Cuatro de ellos,
+$\st{0}{0}{1}$, $\st{3}{3}{0}$, $\st{0}{3}{0}$ y $\st{3}{0}{1}$, son
+inalcanzables desde $s_0$ (el bote no puede estar en una orilla vacía de la que
+nadie lo trajo), de modo que el espacio alcanzable tiene $|\Sr| = 16$ estados.
+
+\subsubsection{Estado inicial y estado objetivo.}
+\begin{equation}
+  s_0 = (N, N, 1) = (3,3,1), \qquad G = \{(0,0,0)\}.
+\end{equation}
+
+\subsubsection{Acciones.}
+Una acción es la carga del bote, $a=(\delta_m, \delta_c)$, con
+\begin{equation}
+  A = \{(\delta_m,\delta_c)\in\mathbb{N}^2 : 1 \le \delta_m+\delta_c \le K\},
+  \qquad |A| = \tfrac{K(K+3)}{2}.
+\end{equation}
+Para $K=2$, $A=\{(2,0),(1,1),(0,2),(1,0),(0,1)\}$. La acción es
+\emph{aplicable} en $s$ si las personas están en la orilla donde se encuentra el bote:
+\begin{equation}
+  \textsc{Aplicable}(s,a) \iff
+  \begin{cases}
+    \delta_m \le m \;\land\; \delta_c \le c, & b = 1,\\
+    \delta_m \le N-m \;\land\; \delta_c \le N-c, & b = 0.
+  \end{cases}
+\end{equation}
+
+\subsubsection{Modelo de transición.}
+El bote cambia de orilla y lleva consigo la carga:
+\begin{equation}
+  T\bigl((m,c,b),(\delta_m,\delta_c)\bigr) =
+  \begin{cases}
+    (m-\delta_m,\; c-\delta_c,\; 0), & b=1 \text{ (ida)},\\
+    (m+\delta_m,\; c+\delta_c,\; 1), & b=0 \text{ (vuelta)},
+  \end{cases}
+\end{equation}
+y la función de sucesores conserva solo los resultados seguros:
+\begin{equation}
+  \textsc{Suc}(s) = \{(a, T(s,a)) : \textsc{Aplicable}(s,a) \land T(s,a)\in S\}.
+\end{equation}
+Toda transición es reversible, por lo que el grafo de estados es no dirigido.
+
+\subsubsection{Test objetivo y costo.}
+$\textsc{Objetivo}(s) \iff s = (0,0,0)$. Cada cruce cuesta $c(s,a,s')=1$, así que
+el costo de un camino es su número de acciones y el camino óptimo es el más corto.
+
+La Fig.~\ref{fig:grafo} muestra el grafo completo de $\Sr$ para $N=3$, $K=2$,
+ordenado por profundidad desde $s_0$. Tiene 17 aristas y un grado medio de
+$2{,}125$, muy por debajo del máximo teórico $|A|=5$: la restricción
+\eqref{eq:seguridad} poda la mayor parte de las acciones.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  every node/.style={draw, rounded corners=2pt, font=\footnotesize\ttfamily,
+                     inner sep=2pt, minimum width=7mm, minimum height=5mm, fill=white},
+  ini/.style={fill=blue!12}, fin/.style={fill=green!18},
+  sol/.style={draw=solucion, line width=1.3pt},
+  arista/.style={draw=black!45}]
+  \def\dx{0.97}
+  \node[ini] (331) at (0*\dx,0) {331};
+  \node (220) at (1*\dx, 0.8) {220};
+  \node (310) at (1*\dx, 0)    {310};
+  \node (320) at (1*\dx,-0.8) {320};
+  \node (321) at (2*\dx,0) {321};
+  \node (300) at (3*\dx,0) {300};
+  \node (311) at (4*\dx,0) {311};
+  \node (110) at (5*\dx,0) {110};
+  \node (221) at (6*\dx,0) {221};
+  \node (020) at (7*\dx,0) {020};
+  \node (031) at (8*\dx,0) {031};
+  \node (010) at (9*\dx,0) {010};
+  \node (111) at (10*\dx, 0.5) {111};
+  \node (021) at (10*\dx,-0.5) {021};
+  \node[fin] (000) at (11*\dx,0) {000};
+  \node (011) at (12*\dx,0) {011};
+  \foreach \a/\b in {331/310,331/320,310/321,010/021,021/000,000/011}
+    \draw[arista] (\a) -- (\b);
+  \foreach \a/\b in {331/220,220/321,321/300,300/311,311/110,110/221,221/020,
+                     020/031,031/010,010/111,111/000}
+    \draw[sol] (\a) -- (\b);
+  \foreach \d in {0,...,12}
+    \node[draw=none, fill=none, font=\tiny\rmfamily, text=black!55] at (\d*\dx,-1.35) {$d{=}\d$};
+\end{tikzpicture}}
+\caption{Grafo del espacio de estados alcanzable ($|\Sr|=16$, 17 aristas) para
+$N=3$, $K=2$. La etiqueta \texttt{mcb} denota el estado $(m,c,b)$ y la columna indica la profundidad mínima
+desde $s_0$. En rojo, el camino de 11 cruces encontrado por BFS. Las únicas
+bifurcaciones son la primera y la última jugada; $\st{3}{2}{0}$ y
+$\st{0}{1}{1}$ son callejones sin salida.}
+\label{fig:grafo}
+\end{figure}
+
+% ===========================================================================
+\section{Implementación}\label{sec:implementacion}
+
+El código está en Python~3 sin dependencias externas y se organiza como un agente
+de resolución de problemas con responsabilidades separadas:
+el módulo \texttt{src/problema.py} encapsula la formulación $\mathcal P$, con
+los estados como tuplas inmutables \texttt{(m\_izq,~c\_izq,~bote\_izq)} que sirven
+de clave en tablas hash; el módulo \texttt{src/busqueda.py} contiene algoritmos
+que solo conocen la interfaz del problema (\texttt{estado\_inicial},
+\texttt{sucesores} y \texttt{es\_objetivo}); y el script \texttt{benchmark.py}
+ejecuta los experimentos. El repositorio incluye pruebas
+unitarias que verifican la formulación, la validez de cada camino y la
+consistencia de la heurística.
+
+\subsubsection{Poda en la generación.}
+La restricción \eqref{eq:seguridad} se aplica dentro de \textsc{Suc}
+(Listado~\ref{lst:suc}): un estado inseguro nunca se crea ni entra a la frontera.
+Es la forma más simple de propagación de restricciones y evita gastar
+expansiones en estados que el test objetivo rechazaría más tarde.
+
+\begin{lstlisting}[caption={Función de sucesores con poda de estados inseguros.},label={lst:suc}]
+def sucesores(self, s):
+    for a in self.acciones:                    # (dm, dc), 1 <= dm + dc <= K
+        if self.es_aplicable(s, a):
+            s2 = self.resultado(s, a)          # modelo de transición T(s, a)
+            if self.es_valido(s2):             # restricción de seguridad
+                yield a, s2
+\end{lstlisting}
+
+\subsubsection{BFS y DFS.}
+Ambos son búsquedas de \emph{grafo}: guardan los estados ya vistos para no
+expandir dos veces el mismo estado. BFS usa \texttt{collections.deque} como cola
+FIFO y marca un estado como alcanzado al generarlo; DFS usa una lista como pila
+LIFO y marca al expandir, apilando los hijos en orden inverso para respetar el
+orden de las acciones (Listado~\ref{lst:bfs}). Sin el conjunto de explorados,
+DFS no termina: la acción $(0,1)$ seguida de su inversa genera un ciclo
+infinito. En ambos el test objetivo se aplica al extraer el nodo, con lo que
+los contadores de nodos expandidos son directamente comparables.
+
+\begin{lstlisting}[caption={Núcleo de BFS; DFS cambia \texttt{popleft()} por \texttt{pop()}.},label={lst:bfs}]
+frontera, alcanzados = deque([Nodo(s0)]), {s0}
+while frontera:
+    nodo = frontera.popleft()                  # FIFO
+    if problema.es_objetivo(nodo.estado):
+        return nodo                            # el camino se reconstruye por los padres
+    expandidos += 1
+    for accion, s2 in problema.sucesores(nodo.estado):
+        if s2 not in alcanzados:
+            alcanzados.add(s2)
+            frontera.append(Nodo(s2, nodo, accion, nodo.profundidad + 1))
+\end{lstlisting}
+
+\subsubsection{Variantes de árbol y A$^*$.}
+Para aislar el efecto de la estrategia sobre la memoria se implementaron dos
+variantes sin conjunto global de explorados: BFS de árbol, y DFS de árbol que solo
+evita repetir estados del camino actual, con memoria $O(bm)$. Además se incluyó
+A$^*$ \cite{hart1968} con una heurística obtenida por \emph{relajación}
+\cite{pearl1984}: se ignora la restricción \eqref{eq:seguridad} y se cuenta el
+mínimo de cruces para pasar $n=m+c$ personas. Cada viaje de ida y vuelta traslada
+netamente $K-1$ personas y el último traslada $K$; si el bote está a la derecha, primero debe volver con al menos una persona. De ahí
+\begin{equation}
+  h_1(n) = \begin{cases} 0, & n=0\\ 1, & 0<n\le K\\ 2\left\lceil \frac{n-K}{K-1}\right\rceil+1, & n>K \end{cases}
+\end{equation}
+\begin{equation}
+  h(m,c,b) = \begin{cases} h_1(n), & b=1\\ 1 + h_1(n+1), & b=0,\ n>0\\ 0, & b=0,\ n=0 \end{cases}
+\end{equation}
+Al ser el costo exacto de un problema relajado, $h$ es admisible y consistente;
+las pruebas lo comprueban sobre todas las aristas ($h(s)\le 1+h(s')$, $h(s_G)=0$).
+Para $s_0$ con $K=2$ se obtiene $h(s_0)=9$, frente al costo real $h^*(s_0)=11$.
+
+% ===========================================================================
+\section{Benchmarking}\label{sec:experimentos}
+
+\subsubsection{Protocolo.}
+Las pruebas se ejecutaron con Python~3.13.18 en Linux x86\_64. El tiempo
+reportado es la \emph{mediana} de 2\,000 ejecuciones (10 para BFS de árbol)
+medidas con el reloj de alta resolución \texttt{perf\_counter} de Python, lo que amortigua el ruido
+del sistema operativo en tiempos de microsegundos. La memoria se reporta de dos
+formas: en nodos, como el máximo de $|F|+|E|$ (frontera más explorados), y en
+bytes, como el pico medido con \texttt{tracemalloc} en una ejecución separada
+para no sesgar el tiempo. El factor de ramificación efectivo $b^*$ se obtiene
+resolviendo por bisección $N_{\text{gen}}+1 = \sum_{i=0}^{d} (b^*)^i$, donde
+$N_{\text{gen}}$ son los nodos generados y $d$ la profundidad de la solución
+\cite{russell2020}. Todo se reproduce con \texttt{python3 benchmark.py}.
+
+\subsubsection{Resultados de la instancia clásica.}
+La Tabla~\ref{tab:principal} es la comparación que pide el enunciado y la
+Tabla~\ref{tab:e1} la amplía con las demás métricas.
+
+\begin{table}[t]
+\centering
+\caption{Comparación BFS frente a DFS en la instancia clásica ($N=3$, $K=2$).}
+\label{tab:principal}
+\setlength{\tabcolsep}{8pt}
+\input{tablas/tabla_principal.tex}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Métricas completas para $N=3$, $K=2$. Exp.: nodos expandidos; Gen.:
+nodos generados; $|F|_{\max}$: tamaño máximo de la frontera; Mem.: máximo de
+nodos simultáneos y pico de memoria (\texttt{tracemalloc}); $d$: longitud del
+camino. Debajo de la línea, variantes sin detección de estados repetidos.}
+\label{tab:e1}
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{\input{tablas/tabla_e1.tex}}
+\end{table}
+
+Los dos algoritmos ciegos encuentran un camino de longitud $d=11$, que es el
+óptimo conocido. DFS expande menos nodos (11 frente a 14) porque su primera rama
+llega directamente a la meta, mientras que BFS completa cada nivel, incluido el
+callejón $\st{3}{2}{0}$ y los estados del nivel 10. Las diferencias de tiempo
+($26{,}5$ frente a $24{,}6\,\mu$s) son del orden del ruido de medición y no
+permiten afirmar que uno sea más rápido. $b^*\approx 1{,}04$ indica que la
+búsqueda es casi lineal. El contraste aparece en las variantes de árbol: sin
+detectar repetidos, BFS expande 10\,444 nodos, mantiene 13\,835 en la frontera,
+usa 3{,}9\,MiB y tarda 23\,ms (unas 880 veces más que BFS de grafo), con un
+$b^*$ aparente de 2{,}38; DFS de árbol, con control de ciclos en el camino,
+conserva 5 nodos.
+
+\subsubsection{Sensibilidad de DFS al orden de las acciones.}
+El camino que devuelve DFS depende del orden en que se prueban las acciones.
+Se ejecutó DFS con todas las permutaciones de $A$
+(Tabla~\ref{tab:ordenes}). En la instancia clásica las 120 permutaciones dan
+$d=11$; con $N=5$, $K=3$ ($|A|=9$, $9!=362\,880$ órdenes) solo el $16{,}5$\,\%
+encuentra el óptimo.
+
+\begin{table}[t]
+\centering
+\caption{Longitud del camino de DFS sobre todas las permutaciones de las acciones.}
+\label{tab:ordenes}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}rrrcrrrr@{}}
+\toprule
+ & & & & \multicolumn{3}{c}{Órdenes con DFS de longitud} & \\
+\cmidrule(lr){5-7}
+$N$ & $K$ & Permutaciones & $d^{\,*}$ (BFS) & $d=11$ & $d=13$ & $d=15$ & \% óptimo \\
+\midrule
+3 & 2 & 120 & 11 & 120 & 0 & 0 & 100{,}0 \\
+5 & 3 & 362\,880 & 11 & 59\,832 & 43\,632 & 259\,416 & 16{,}5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Escalabilidad.}
+La Tabla~\ref{tab:e3} y la Fig.~\ref{fig:escala} varían $N$ y $K$ (con $K=2$ no
+existe solución para $N\ge 4$, lo que ambos algoritmos detectan al agotar el
+espacio). $|\Sr|$ crece linealmente ($6N-2$ para estas instancias) y los nodos
+expandidos por los tres algoritmos lo siguen. A medida que el problema crece, DFS
+expande algo menos que BFS, pero su camino se aleja del óptimo hasta duplicarlo
+($d=1\,015$ frente a $499$ con $N=500$). La frontera de BFS se mantiene en
+$|F|_{\max}\le 14$, mientras que la de DFS crece con $N$ hasta 2\,520 nodos.
+A$^*$ coincide siempre con el óptimo de BFS, pero ahorra pocas expansiones
+(2\,014 frente a 2\,025 con $N=500$).
+
+\begin{table}[t]
+\centering
+\caption{Escalabilidad de las búsquedas de grafo. $|\Sr|$: estados alcanzables;
+Exp.: nodos expandidos; $d$: longitud del camino; ms: mediana del tiempo.}
+\label{tab:e3}
+\setlength{\tabcolsep}{3.5pt}
+\resizebox{\textwidth}{!}{\input{tablas/tabla_e3.tex}}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  name=izq, width=0.53\textwidth, height=4.6cm, xmode=log, ymode=log,
+  xlabel={$N$}, ylabel={$|F|_{\max}$ (nodos)}, title={\small Frontera máxima},
+  legend style={font=\tiny, at={(0.03,0.97)}, anchor=north west},
+  tick label style={font=\scriptsize}, label style={font=\scriptsize},
+  log basis x=10]
+  \addplot[mark=o, blue] table[x=N, y=bfs_F] {tablas/escalabilidad.dat};
+  \addplot[mark=square, red] table[x=N, y=dfs_F] {tablas/escalabilidad.dat};
+  \addplot[mark=triangle, black!60!green] table[x=N, y=astar_F] {tablas/escalabilidad.dat};
+  \legend{BFS, DFS, A$^*$}
+\end{axis}
+\begin{axis}[
+  at={(izq.east)}, anchor=west, xshift=1.1cm,
+  width=0.53\textwidth, height=4.6cm, xmode=log, ymode=log,
+  xlabel={$N$}, ylabel={$d$ (cruces)}, title={\small Longitud del camino},
+  legend style={font=\tiny, at={(0.03,0.97)}, anchor=north west},
+  tick label style={font=\scriptsize}, label style={font=\scriptsize}]
+  \addplot[mark=o, blue] table[x=N, y=bfs_d] {tablas/escalabilidad.dat};
+  \addplot[mark=square, red] table[x=N, y=dfs_d] {tablas/escalabilidad.dat};
+  \legend{BFS (óptimo), DFS}
+\end{axis}
+\end{tikzpicture}
+\caption{Frontera máxima y longitud del camino en función de $N$ (instancias de
+la Tabla~\ref{tab:e3}, ejes logarítmicos).}
+\label{fig:escala}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Memoria de BFS y DFS (búsqueda de grafo) por instancia.}
+\label{tab:mem}
+\input{tablas/tabla_memoria.tex}
+\end{table}
+
+% ===========================================================================
+\section{Discusión y conclusión crítica}\label{sec:discusion}
+
+\subsubsection{¿Por qué difieren los resultados asintóticos?}
+La teoría \cite{russell2020} da para BFS tiempo y espacio $O(b^{d})$
+($O(b^{d+1})$ con el test objetivo al expandir, como aquí), y para DFS tiempo
+$O(b^{m})$ y espacio $O(bm)$, donde $b$ es el factor de ramificación, $d$ la
+profundidad de la solución más superficial y $m$ la profundidad máxima. Estas
+cotas suponen búsqueda en árbol sobre un espacio grande. En este problema hay
+dos hechos que cambian el comportamiento observado:
+\begin{enumerate}
+\item \emph{El espacio es pequeño y está fuertemente podado.} Con detección de
+repetidos, ambos algoritmos quedan acotados por $O(|\Sr|+|E|)$ en tiempo y
+$O(|\Sr|)$ en memoria \cite{cormen2022}, con $|\Sr|=16$ para $N=3$ y lineal en
+$N$ en general. Por eso los dos expanden casi todo el espacio, y sus tiempos son comparables y crecen de forma polinómica moderada con $N$
+(Tabla~\ref{tab:e3}), lejos del crecimiento exponencial de la cota de árbol. El
+factor $b^*\approx 1{,}04$ significa que los nodos generados ($14$--$15$) apenas
+superan la profundidad de la solución ($d=11$): la búsqueda es casi lineal.
+\item \emph{La estructura del grafo es casi una cadena.} La Fig.~\ref{fig:grafo}
+muestra que solo hay bifurcaciones al principio y al final. La profundidad máxima
+$m$ coincide prácticamente con $d$, así que la ventaja teórica de DFS en memoria
+($bm$ frente a $b^d$) y su riesgo de caminos largos ($m\gg d$) no tienen espacio
+para manifestarse.
+\end{enumerate}
+Cuando estas condiciones desaparecen, las diferencias asintóticas vuelven: sin
+detección de repetidos el espacio efectivo pasa a ser el árbol de búsqueda, y BFS
+expande 10\,444 nodos con $b^*=2{,}38$, mientras que al ampliar $N$ y $K$ el
+grafo deja de ser una cadena y DFS empieza a devolver caminos cada vez más largos que el óptimo.
+
+\subsubsection{¿DFS garantizó el camino más corto?}
+No. En la instancia clásica DFS devolvió $d=11$ con cualquier orden de las
+acciones, pero porque \emph{todos los caminos simples} de $s_0$ a la meta miden
+exactamente 11 (verificado por enumeración exhaustiva). Fue una consecuencia de
+la estructura del problema, no una propiedad del algoritmo. DFS no es óptimo:
+devuelve el primer camino que encuentra su rama más profunda. Con $N=5$, $K=3$,
+el $83{,}5$\,\% de los órdenes produce caminos de 13 o 15 cruces, y con $N=500$
+el camino de DFS es 2{,}03 veces el óptimo. BFS, en cambio, es óptimo porque los
+costos son unitarios: explora por niveles, así que la primera meta extraída está a
+profundidad mínima.
+
+\subsubsection{¿Por qué BFS consumió más memoria?}
+BFS debe mantener toda la frontera de un nivel antes de pasar al siguiente, y el
+tamaño de un nivel crece como $b^{d}$; además, para reconstruir caminos, cada nodo
+guarda su padre. DFS solo necesita la rama actual y los hermanos pendientes,
+$O(bm)$. Los datos lo confirman en el régimen donde la teoría aplica: en búsqueda de
+árbol BFS llega a 13\,835 nodos en la frontera ($\approx$3{,}9\,MiB) frente a 5
+nodos de DFS, una razón de 2\,767:1. Es importante, sin embargo, ser precisos con
+la búsqueda de grafo de este problema: allí la memoria la domina el conjunto de
+explorados, de tamaño $|\Sr|$ en ambos casos, y la diferencia es mínima
+(15 frente a 16 nodos; 3{,}2 frente a 2{,}9\,KiB). Incluso, al crecer $N$, la
+frontera de DFS supera a la de BFS (Tabla~\ref{tab:mem}), porque la pila conserva
+hermanos y duplicados que aún no ha descartado, mientras que el ancho de cada
+nivel de BFS está acotado por la propia restricción de seguridad. La afirmación
+\emph{``BFS consume más memoria''} es correcta como cota del peor caso
+($O(b^d)$ frente a $O(bm)$), pero su magnitud real depende del factor de
+ramificación efectivo y de si se eliminan los estados repetidos.
+
+\subsubsection{Conclusión.}
+La formulación $(m,c,b)$ con poda en la función de sucesores reduce el problema a
+16 estados alcanzables, de modo que BFS y DFS lo resuelven en microsegundos.
+Para este tipo de problema, pequeño, con costos unitarios y donde se requiere el
+camino mínimo, BFS con detección de repetidos es la elección correcta: garantiza
+optimalidad y su costo en memoria queda acotado por $|\Sr|$. DFS solo es
+preferible si la memoria es el recurso crítico y no se exige optimalidad. En ese
+caso, la profundización iterativa \cite{korf1985} combina la memoria $O(bd)$
+de DFS con la optimalidad de BFS. La heurística relajada de A$^*$ ahorra pocas
+expansiones porque ignora justo la restricción que hace difícil el problema. Una
+heurística más informada debería incorporar la condición de seguridad.
+
+\medskip
+\noindent\textbf{Código fuente:}\\ \url{\repo}
+
+\bibliographystyle{splncs04}
+\bibliography{referencias}
+
+\end{document}

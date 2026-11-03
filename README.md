@@ -58,5 +58,18 @@ src/metricas.py   Factor de ramificación efectivo b*
 main.py           CLI para resolver e imprimir la solución
 benchmark.py      Experimentos y tabla comparativa
 tests/            Pruebas unitarias
-resultados/       Salida del benchmark (CSV / Markdown)
+resultados/       Salida del benchmark (CSV, JSON, tablas LaTeX)
+informe/          Fuente LaTeX del informe (plantilla Springer LNCS) y PDF
 ```
+
+## Resultados principales (N = 3, K = 2)
+
+| Algoritmo   | Nodos expandidos | Tiempo (s, mediana) | Longitud del camino |
+|-------------|-----------------:|--------------------:|--------------------:|
+| BFS (cola)  | 14               | 2.65e-05            | 11                  |
+| DFS (pila)  | 11               | 2.46e-05            | 11                  |
+
+En la instancia clásica todos los caminos simples a la meta miden 11, por eso
+DFS también da el óptimo. Con N = 5, K = 3 solo el 16.5 % de los órdenes de
+acciones lleva a DFS al camino óptimo, y sin detección de estados repetidos la
+frontera de BFS alcanza 13 835 nodos frente a 5 de DFS. Detalle en el informe.
