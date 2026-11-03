@@ -17,7 +17,10 @@ def factor_ramificacion_efectivo(nodos: int, profundidad: int, tol: float = 1e-9
     def total(b: float) -> float:
         return sum(b ** i for i in range(profundidad + 1))
 
-    lo, hi = 0.0, max(1.0, float(nodos))
+    # Como N >= d, b* >= 1; se acota superiormente duplicando hasta superar N+1.
+    lo, hi = 1.0, 2.0
+    while total(hi) < nodos + 1:
+        lo, hi = hi, hi * 2
     while hi - lo > tol:
         mid = (lo + hi) / 2
         if total(mid) < nodos + 1:

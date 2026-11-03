@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Iterator, Tuple
+from typing import Iterator, Optional, Tuple
 
 Estado = Tuple[int, int, int]   # (misioneros_izq, canibales_izq, bote_izq)
 Accion = Tuple[int, int]        # (misioneros en el bote, caníbales en el bote)
@@ -30,6 +30,7 @@ class MisionerosCanibales:
 
     n: int = 3
     k: int = 2
+    orden: Optional[Tuple[Accion, ...]] = None  # orden explícito de las acciones
 
     def __post_init__(self) -> None:
         if self.n < 1 or self.k < 1:
@@ -56,6 +57,8 @@ class MisionerosCanibales:
         El orden no afecta a la optimalidad de BFS, pero sí determina el camino
         concreto que encuentra DFS.
         """
+        if self.orden is not None:
+            return tuple(self.orden)
         cargas = [
             (m, c)
             for m in range(self.k + 1)
