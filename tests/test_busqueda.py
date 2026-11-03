@@ -4,7 +4,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.busqueda import bfs, dfs  # noqa: E402
+from src.busqueda import bfs, bfs_arbol, dfs, dfs_arbol  # noqa: E402
 from src.problema import MisionerosCanibales  # noqa: E402
 
 
@@ -42,6 +42,18 @@ class TestDFS(unittest.TestCase):
 
     def test_dfs_no_cicla_sin_solucion(self):
         self.assertFalse(dfs(MisionerosCanibales(4, 2)).encontrada)
+
+
+class TestArbol(unittest.TestCase):
+    def test_bfs_arbol_mismo_optimo_mas_memoria(self):
+        p = MisionerosCanibales(3, 2)
+        g, a = bfs(p), bfs_arbol(p)
+        self.assertEqual(a.longitud, g.longitud)
+        self.assertGreater(a.max_frontera, 100 * g.max_frontera)
+
+    def test_dfs_arbol_valido(self):
+        p = MisionerosCanibales(3, 2)
+        self.assertTrue(es_camino_valido(p, dfs_arbol(p)))
 
 
 if __name__ == "__main__":

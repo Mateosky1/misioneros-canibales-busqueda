@@ -129,3 +129,55 @@ def dfs(problema: MisionerosCanibales, registrar_orden: bool = False) -> Resulta
         r.nodos_generados += len(hijos)
         frontera.extend(reversed(hijos))
     return r
+
+
+# ------------------------------------------------- variantes de búsqueda en árbol
+def bfs_arbol(problema: MisionerosCanibales, limite_nodos: int = 5_000_000) -> Resultado:
+    """BFS de árbol (sin conjunto de alcanzados).
+
+    Sirve para observar el crecimiento O(b^d) de la frontera que predice la
+    teoría: cada estado puede reaparecer en muchas ramas.
+    """
+    r = Resultado("BFS-árbol")
+    frontera: deque[Nodo] = deque([Nodo(problema.estado_inicial)])
+    while frontera:
+        r.max_frontera = max(r.max_frontera, len(frontera))
+        r.max_memoria = r.max_frontera
+        nodo = frontera.popleft()
+        if problema.es_objetivo(nodo.estado):
+            r.solucion = nodo
+            return r
+        r.nodos_expandidos += 1
+        for accion, s2 in problema.sucesores(nodo.estado):
+            frontera.append(_hijo(nodo, accion, s2))
+            r.nodos_generados += 1
+        if r.nodos_generados > limite_nodos:
+            break
+    return r
+
+
+def dfs_arbol(problema: MisionerosCanibales) -> Resultado:
+    """DFS de árbol con control de ciclos solo sobre el camino actual.
+
+    No guarda un conjunto global de explorados: la memoria es O(b*m), donde m
+    es la profundidad máxima, a cambio de re-expandir estados en ramas distintas.
+    """
+    r = Resultado("DFS-árbol")
+    raiz = Nodo(problema.estado_inicial)
+    frontera: list[tuple[Nodo, frozenset]] = [(raiz, frozenset({raiz.estado}))]
+    while frontera:
+        r.max_frontera = max(r.max_frontera, len(frontera))
+        r.max_memoria = r.max_frontera
+        nodo, en_camino = frontera.pop()
+        if problema.es_objetivo(nodo.estado):
+            r.solucion = nodo
+            return r
+        r.nodos_expandidos += 1
+        hijos = [
+            (_hijo(nodo, accion, s2), en_camino | {s2})
+            for accion, s2 in problema.sucesores(nodo.estado)
+            if s2 not in en_camino
+        ]
+        r.nodos_generados += len(hijos)
+        frontera.extend(reversed(hijos))
+    return r
