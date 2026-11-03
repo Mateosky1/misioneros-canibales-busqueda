@@ -1,0 +1,41 @@
+Entorno: {'python': '3.13.18', 'plataforma': 'Linux-6.18.44-fc-v233-x86_64-with-glibc2.39', 'procesador': 'x86_64', 'repeticiones': 2000}
+
+E1 — Instancia clásica (N=3, K=2)
+Algoritmo       Exp      Gen   |F|max   Mem(n)      KiB       t (s)   d     b*
+BFS              14       14        3       15      3.2    2.65e-05  11  1.040
+DFS              11       15        5       16      2.9    2.46e-05  11  1.051
+A*               14       14        3       15      3.4    3.42e-05  11  1.040
+BFS-árbol     10444    24278    13835    13835   3971.5    2.33e-02  11  2.383
+DFS-árbol        11       15        5        5      5.1    2.60e-05  11  1.051
+
+E2 — DFS frente al orden de las acciones
+{'N': 3, 'K': 2, 'permutaciones': 120, 'longitud_optima': 11, 'distribucion_longitudes': {11: 120}, 'fraccion_optima': 1.0, 'expandidos_min': 11, 'expandidos_max': 13, 'expandidos_media': 11.833333333333334}
+{'N': 5, 'K': 3, 'permutaciones': 362880, 'longitud_optima': 11, 'distribucion_longitudes': {11: 59832, 13: 43632, 15: 259416}, 'fraccion_optima': 0.16488095238095238, 'expandidos_min': 11, 'expandidos_max': 23, 'expandidos_media': 17.420833333333334}
+
+E3 — Escalabilidad
+N=3    K=2 BFS  |Sr|=16    exp=14    d=11    |F|max=3     t=2.63e-05s
+N=3    K=2 DFS  |Sr|=16    exp=11    d=11    |F|max=5     t=2.44e-05s
+N=3    K=2 A*   |Sr|=16    exp=14    d=11    |F|max=3     t=3.45e-05s
+N=5    K=3 BFS  |Sr|=28    exp=26    d=11    |F|max=5     t=7.19e-05s
+N=5    K=3 DFS  |Sr|=28    exp=16    d=15    |F|max=20    t=5.39e-05s
+N=5    K=3 A*   |Sr|=28    exp=23    d=11    |F|max=5     t=7.86e-05s
+N=10   K=4 BFS  |Sr|=58    exp=56    d=17    |F|max=8     t=2.23e-04s
+N=10   K=4 DFS  |Sr|=58    exp=36    d=29    |F|max=47    t=1.72e-04s
+N=10   K=4 A*   |Sr|=58    exp=48    d=17    |F|max=9     t=2.25e-04s
+N=25   K=4 BFS  |Sr|=148   exp=118   d=47    |F|max=9     t=4.98e-04s
+N=25   K=4 DFS  |Sr|=148   exp=96    d=59    |F|max=67    t=4.59e-04s
+N=25   K=4 A*   |Sr|=148   exp=108   d=47    |F|max=9     t=5.28e-04s
+N=50   K=5 BFS  |Sr|=298   exp=223   d=93    |F|max=12    t=1.28e-03s
+N=50   K=5 DFS  |Sr|=298   exp=193   d=111   |F|max=173   t=1.24e-03s
+N=50   K=5 A*   |Sr|=298   exp=209   d=93    |F|max=56    t=1.36e-03s
+N=100  K=5 BFS  |Sr|=598   exp=423   d=193   |F|max=12    t=2.50e-03s
+N=100  K=5 DFS  |Sr|=598   exp=393   d=211   |F|max=323   t=2.56e-03s
+N=100  K=5 A*   |Sr|=598   exp=409   d=193   |F|max=107   t=2.73e-03s
+N=200  K=6 BFS  |Sr|=1198  exp=825   d=199   |F|max=14    t=6.42e-03s
+N=200  K=6 DFS  |Sr|=1198  exp=795   d=415   |F|max=1020  t=6.84e-03s
+N=200  K=6 A*   |Sr|=1198  exp=814   d=199   |F|max=248   t=7.05e-03s
+N=500  K=6 BFS  |Sr|=2998  exp=2025  d=499   |F|max=14    t=1.71e-02s
+N=500  K=6 DFS  |Sr|=2998  exp=1995  d=1015  |F|max=2520  t=1.88e-02s
+N=500  K=6 A*   |Sr|=2998  exp=2014  d=499   |F|max=608   t=1.92e-02s
+
+Resultados guardados en /home/claude/misioneros-canibales-busqueda/resultados/
