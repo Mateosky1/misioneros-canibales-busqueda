@@ -94,3 +94,38 @@ def bfs(problema: MisionerosCanibales, registrar_orden: bool = False) -> Resulta
                 frontera.append(_hijo(nodo, accion, s2))
                 r.nodos_generados += 1
     return r
+
+
+# --------------------------------------------------------------------- DFS
+def dfs(problema: MisionerosCanibales, registrar_orden: bool = False) -> Resultado:
+    """Búsqueda en profundidad: frontera LIFO (pila, lista de Python).
+
+    Se usa la versión de grafo con conjunto de explorados: sin él, DFS entra en
+    ciclos infinitos (p. ej. ir y volver con el mismo caníbal). Los hijos se
+    apilan en orden inverso para que se exploren en el orden de `acciones`.
+    """
+    r = Resultado("DFS")
+    frontera: list[Nodo] = [Nodo(problema.estado_inicial)]
+    explorados: set[Estado] = set()
+
+    while frontera:
+        r.max_frontera = max(r.max_frontera, len(frontera))
+        r.max_memoria = max(r.max_memoria, len(frontera) + len(explorados))
+        nodo = frontera.pop()
+        if nodo.estado in explorados:          # duplicado ya expandido
+            continue
+        if problema.es_objetivo(nodo.estado):
+            r.solucion = nodo
+            return r
+        explorados.add(nodo.estado)
+        r.nodos_expandidos += 1
+        if registrar_orden:
+            r.orden_expansion.append(nodo.estado)
+        hijos = [
+            _hijo(nodo, accion, s2)
+            for accion, s2 in problema.sucesores(nodo.estado)
+            if s2 not in explorados
+        ]
+        r.nodos_generados += len(hijos)
+        frontera.extend(reversed(hijos))
+    return r

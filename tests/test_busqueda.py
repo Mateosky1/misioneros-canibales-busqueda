@@ -4,7 +4,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.busqueda import bfs  # noqa: E402
+from src.busqueda import bfs, dfs  # noqa: E402
 from src.problema import MisionerosCanibales  # noqa: E402
 
 
@@ -30,6 +30,18 @@ class TestBFS(unittest.TestCase):
         # Con K = 2 el problema no tiene solución para N >= 4
         r = bfs(MisionerosCanibales(4, 2))
         self.assertFalse(r.encontrada)
+
+
+class TestDFS(unittest.TestCase):
+    def test_dfs_encuentra_camino_valido(self):
+        p = MisionerosCanibales(3, 2)
+        r = dfs(p)
+        self.assertTrue(r.encontrada)
+        self.assertTrue(es_camino_valido(p, r))
+        self.assertGreaterEqual(r.longitud, bfs(p).longitud)
+
+    def test_dfs_no_cicla_sin_solucion(self):
+        self.assertFalse(dfs(MisionerosCanibales(4, 2)).encontrada)
 
 
 if __name__ == "__main__":
