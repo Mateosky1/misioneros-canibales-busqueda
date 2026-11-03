@@ -181,3 +181,71 @@ def dfs_arbol(problema: MisionerosCanibales) -> Resultado:
         r.nodos_generados += len(hijos)
         frontera.extend(reversed(hijos))
     return r
+
+
+# ------------------------------------------------------------------- A*
+def heuristica_relajada(problema: MisionerosCanibales, s: Estado) -> int:
+    """h(s): cruces mínimos del problema relajado sin la restricción de seguridad.
+
+    Sea n = m_izq + c_izq. Con el bote a la izquierda, cada viaje de ida y
+    vuelta traslada netamente K - 1 personas y el último viaje traslada K:
+        h(n, 1) = 1                              si 0 < n <= K
+        h(n, 1) = 2 * ceil((n - K) / (K - 1)) + 1  si n > K
+    Con el bote a la derecha primero hay que regresarlo con al menos una persona:
+        h(n, 0) = 1 + h(n + 1, 1)  si n > 0,   h(0, 0) = 0.
+    Es el costo exacto de un problema relajado, por lo tanto es admisible y
+    consistente.
+    """
+    m_izq, c_izq, b = s
+    n, k = m_izq + c_izq, problema.k
+
+    def desde_izq(personas: int) -> int:
+        if personas == 0:
+            return 0
+        if personas <= k:
+            return 1
+        if k == 1:
+            return 10**9  # con K = 1 nadie puede traer el bote de vuelta
+        return 2 * (-(-(personas - k) // (k - 1))) + 1
+
+    if b == 1:
+        return desde_izq(n)
+    return 0 if n == 0 else 1 + desde_izq(n + 1)
+
+
+def astar(problema: MisionerosCanibales, registrar_orden: bool = False) -> Resultado:
+    """A* de grafo con f = g + h y la heurística relajada (consistente)."""
+    import heapq
+    from itertools import count
+
+    r = Resultado("A*")
+    h = lambda s: heuristica_relajada(problema, s)  # noqa: E731
+    raiz = Nodo(problema.estado_inicial)
+    desempate = count()
+    frontera = [(h(raiz.estado), next(desempate), raiz)]
+    mejor_g: dict[Estado, int] = {raiz.estado: 0}
+    explorados: set[Estado] = set()
+
+    while frontera:
+        r.max_frontera = max(r.max_frontera, len(frontera))
+        r.max_memoria = max(r.max_memoria, len(frontera) + len(explorados))
+        _, _, nodo = heapq.heappop(frontera)
+        if nodo.estado in explorados:
+            continue
+        if problema.es_objetivo(nodo.estado):
+            r.solucion = nodo
+            return r
+        explorados.add(nodo.estado)
+        r.nodos_expandidos += 1
+        if registrar_orden:
+            r.orden_expansion.append(nodo.estado)
+        for accion, s2 in problema.sucesores(nodo.estado):
+            g2 = nodo.profundidad + 1
+            if s2 not in explorados and g2 < mejor_g.get(s2, 1 << 60):
+                mejor_g[s2] = g2
+                heapq.heappush(frontera, (g2 + h(s2), next(desempate), _hijo(nodo, accion, s2)))
+                r.nodos_generados += 1
+    return r
+
+
+ALGORITMOS = {"bfs": bfs, "dfs": dfs, "astar": astar}
