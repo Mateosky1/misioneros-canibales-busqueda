@@ -265,6 +265,15 @@ def main() -> None:
         "tabla_e3.tex": tabla_e3(e3),
         "tabla_memoria.tex": tabla_memoria(e3),
     }
+    # Datos para pgfplots (figura de escalabilidad del informe)
+    dat = ["N K Sr bfs_exp dfs_exp astar_exp bfs_d dfs_d bfs_F dfs_F astar_F"]
+    for i in range(0, len(e3), 3):
+        b, d, a = e3[i : i + 3]
+        dat.append(
+            f"{b['N']} {b['K']} {b['alcanzables']} {b['expandidos']} {d['expandidos']} {a['expandidos']} "
+            f"{b['longitud']} {d['longitud']} {b['max_frontera']} {d['max_frontera']} {a['max_frontera']}"
+        )
+    tablas["escalabilidad.dat"] = "\n".join(dat)
     for nombre, contenido in tablas.items():
         with open(os.path.join(SALIDA, "tablas", nombre), "w", encoding="utf-8") as fh:
             fh.write(contenido + "\n")
