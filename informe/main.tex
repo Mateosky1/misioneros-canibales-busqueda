@@ -300,7 +300,14 @@ Tabla~\ref{tab:e1} la amplía con las demás métricas.
 \caption{Comparación BFS frente a DFS en la instancia clásica ($N=3$, $K=2$).}
 \label{tab:principal}
 \setlength{\tabcolsep}{8pt}
-\input{tablas/tabla_principal.tex}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Algoritmo & Nodos expandidos & Tiempo de ejecución (s) & Longitud del camino \\
+\midrule
+BFS (cola) & 14 & $2.65\times10^{-5}$ & 11 \\
+DFS (pila) & 11 & $2.46\times10^{-5}$ & 11 \\
+\bottomrule
+\end{tabular}
 \end{table}
 
 \begin{table}[t]
@@ -311,7 +318,18 @@ nodos simultáneos y pico de memoria (\texttt{tracemalloc}); $d$: longitud del
 camino. Debajo de la línea, variantes sin detección de estados repetidos.}
 \label{tab:e1}
 \setlength{\tabcolsep}{4pt}
-\resizebox{\textwidth}{!}{\input{tablas/tabla_e1.tex}}
+\resizebox{\textwidth}{!}{\begin{tabular}{@{}lrrrrrrrr@{}}
+\toprule
+Algoritmo & Exp. & Gen. & $|F|_{\max}$ & Mem. (nodos) & Mem. (KiB) & Tiempo (ms) & $d$ & $b^*$ \\
+\midrule
+BFS & 14 & 14 & 3 & 15 & 3.2 & 0.0265 & 11 & 1.040 \\
+DFS & 11 & 15 & 5 & 16 & 2.9 & 0.0246 & 11 & 1.051 \\
+A$^*$ & 14 & 14 & 3 & 15 & 3.4 & 0.0342 & 11 & 1.040 \\
+\midrule
+BFS (árbol) & 10\,444 & 24\,278 & 13\,835 & 13\,835 & 3\,971.5 & 23.3096 & 11 & 2.383 \\
+DFS (árbol) & 11 & 15 & 5 & 5 & 5.1 & 0.0260 & 11 & 1.051 \\
+\bottomrule
+\end{tabular}}
 \end{table}
 
 Los dos algoritmos ciegos encuentran un camino de longitud $d=11$, que es el
@@ -367,7 +385,21 @@ A$^*$ coincide siempre con el óptimo de BFS, pero ahorra pocas expansiones
 Exp.: nodos expandidos; $d$: longitud del camino; ms: mediana del tiempo.}
 \label{tab:e3}
 \setlength{\tabcolsep}{3.5pt}
-\resizebox{\textwidth}{!}{\input{tablas/tabla_e3.tex}}
+\resizebox{\textwidth}{!}{\begin{tabular}{@{}rrr|rrr|rrr|rrr@{}}
+\toprule
+ & & & \multicolumn{3}{c|}{BFS} & \multicolumn{3}{c|}{DFS} & \multicolumn{3}{c}{A$^*$} \\
+$N$ & $K$ & $|S_r|$ & Exp. & $d$ & ms & Exp. & $d$ & ms & Exp. & $d$ & ms \\
+\midrule
+3 & 2 & 16 & 14 & 11 & 0.026 & 11 & 11 & 0.024 & 14 & 11 & 0.035 \\
+5 & 3 & 28 & 26 & 11 & 0.072 & 16 & 15 & 0.054 & 23 & 11 & 0.079 \\
+10 & 4 & 58 & 56 & 17 & 0.223 & 36 & 29 & 0.172 & 48 & 17 & 0.225 \\
+25 & 4 & 148 & 118 & 47 & 0.498 & 96 & 59 & 0.459 & 108 & 47 & 0.528 \\
+50 & 5 & 298 & 223 & 93 & 1.282 & 193 & 111 & 1.240 & 209 & 93 & 1.356 \\
+100 & 5 & 598 & 423 & 193 & 2.499 & 393 & 211 & 2.561 & 409 & 193 & 2.727 \\
+200 & 6 & 1198 & 825 & 199 & 6.419 & 795 & 415 & 6.836 & 814 & 199 & 7.046 \\
+500 & 6 & 2998 & 2025 & 499 & 17.081 & 1995 & 1015 & 18.840 & 2014 & 499 & 19.201 \\
+\bottomrule
+\end{tabular}}
 \end{table}
 
 \begin{figure}[t]
@@ -379,9 +411,9 @@ Exp.: nodos expandidos; $d$: longitud del camino; ms: mediana del tiempo.}
   legend style={font=\tiny, at={(0.03,0.97)}, anchor=north west},
   tick label style={font=\scriptsize}, label style={font=\scriptsize},
   log basis x=10]
-  \addplot[mark=o, blue] table[x=N, y=bfs_F] {tablas/escalabilidad.dat};
-  \addplot[mark=square, red] table[x=N, y=dfs_F] {tablas/escalabilidad.dat};
-  \addplot[mark=triangle, black!60!green] table[x=N, y=astar_F] {tablas/escalabilidad.dat};
+  \addplot[mark=o, blue] coordinates {(3,3) (5,5) (10,8) (25,9) (50,12) (100,12) (200,14) (500,14)};
+  \addplot[mark=square, red] coordinates {(3,5) (5,20) (10,47) (25,67) (50,173) (100,323) (200,1020) (500,2520)};
+  \addplot[mark=triangle, black!60!green] coordinates {(3,3) (5,5) (10,9) (25,9) (50,56) (100,107) (200,248) (500,608)};
   \legend{BFS, DFS, A$^*$}
 \end{axis}
 \begin{axis}[
@@ -390,8 +422,8 @@ Exp.: nodos expandidos; $d$: longitud del camino; ms: mediana del tiempo.}
   xlabel={$N$}, ylabel={$d$ (cruces)}, title={\small Longitud del camino},
   legend style={font=\tiny, at={(0.03,0.97)}, anchor=north west},
   tick label style={font=\scriptsize}, label style={font=\scriptsize}]
-  \addplot[mark=o, blue] table[x=N, y=bfs_d] {tablas/escalabilidad.dat};
-  \addplot[mark=square, red] table[x=N, y=dfs_d] {tablas/escalabilidad.dat};
+  \addplot[mark=o, blue] coordinates {(3,11) (5,11) (10,17) (25,47) (50,93) (100,193) (200,199) (500,499)};
+  \addplot[mark=square, red] coordinates {(3,11) (5,15) (10,29) (25,59) (50,111) (100,211) (200,415) (500,1015)};
   \legend{BFS (óptimo), DFS}
 \end{axis}
 \end{tikzpicture}
@@ -404,7 +436,21 @@ la Tabla~\ref{tab:e3}, ejes logarítmicos).}
 \centering
 \caption{Memoria de BFS y DFS (búsqueda de grafo) por instancia.}
 \label{tab:mem}
-\input{tablas/tabla_memoria.tex}
+\begin{tabular}{@{}rr|rr|rr@{}}
+\toprule
+ & & \multicolumn{2}{c|}{BFS} & \multicolumn{2}{c}{DFS} \\
+$N$ & $K$ & $|F|_{\max}$ & Mem. (KiB) & $|F|_{\max}$ & Mem. (KiB) \\
+\midrule
+3 & 2 & 3 & 3.2 & 5 & 2.9 \\
+5 & 3 & 5 & 5.2 & 20 & 4.9 \\
+10 & 4 & 8 & 6.8 & 47 & 10.9 \\
+25 & 4 & 9 & 16.6 & 67 & 24.5 \\
+50 & 5 & 12 & 22.1 & 173 & 45.7 \\
+100 & 5 & 12 & 56.4 & 323 & 116.3 \\
+200 & 6 & 14 & 89.4 & 1020 & 265.4 \\
+500 & 6 & 14 & 350.3 & 2520 & 983.7 \\
+\bottomrule
+\end{tabular}
 \end{table}
 
 % ===========================================================================
@@ -479,7 +525,37 @@ heurística más informada debería incorporar la condición de seguridad.
 \medskip
 \noindent\textbf{Código fuente:}\\ \url{\repo}
 
-\bibliographystyle{splncs04}
-\bibliography{referencias}
+\begin{thebibliography}{1}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\providecommand{\doi}[1]{https://doi.org/#1}
+
+\bibitem{amarel1968}
+Amarel, S.: On representations of problems of reasoning about actions. In:
+  Michie, D. (ed.) Machine Intelligence 3, pp. 131--171. Edinburgh University
+  Press (1968)
+
+\bibitem{cormen2022}
+Cormen, T.H., Leiserson, C.E., Rivest, R.L., Stein, C.: Introduction to
+  Algorithms. MIT Press, Cambridge, MA, 4 edn. (2022)
+
+\bibitem{hart1968}
+Hart, P.E., Nilsson, N.J., Raphael, B.: A formal basis for the heuristic
+  determination of minimum cost paths. IEEE Transactions on Systems Science and
+  Cybernetics  \textbf{4}(2),  100--107 (1968)
+
+\bibitem{korf1985}
+Korf, R.E.: Depth-first iterative-deepening: An optimal admissible tree search.
+  Artificial Intelligence  \textbf{27}(1),  97--109 (1985)
+
+\bibitem{pearl1984}
+Pearl, J.: Heuristics: Intelligent Search Strategies for Computer Problem
+  Solving. Addison-Wesley, Reading, MA (1984)
+
+\bibitem{russell2020}
+Russell, S., Norvig, P.: Artificial Intelligence: A Modern Approach. Pearson,
+  Hoboken, NJ, 4 edn. (2020)
+
+\end{thebibliography}
 
 \end{document}

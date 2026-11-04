@@ -59,7 +59,7 @@ main.py           CLI para resolver e imprimir la solución
 benchmark.py      Experimentos y tabla comparativa
 tests/            Pruebas unitarias
 resultados/       Salida del benchmark (CSV, JSON, tablas LaTeX)
-informe/          Fuente LaTeX del informe (plantilla Springer LNCS) y PDF
+informe/          Informe en un solo archivo LaTeX (Springer LNCS) y PDF
 ```
 
 ## Resultados principales (N = 3, K = 2)
